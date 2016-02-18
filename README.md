@@ -1,0 +1,1 @@
+Internal project for the python based wsgi application that runs on athena to verify UMLS licenses before downloading SNOMED specific data.
