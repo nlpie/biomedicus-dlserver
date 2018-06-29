@@ -33,12 +33,12 @@
     </ul>
     <h4>UMLS Licensed</h4>
     <table class="table table-striped">
-        % for item in umls:
+        % for file, size, time in umls:
         <tr>
             <td>
                 <p>
-                    <a href="verify-umls/{{item.file}}">{{item.file}}
-                        <small>{{item.ctime}} - {{item.byte_string}}</small>
+                    <a href="verify-umls/{{file}}">{{file}}
+                        <small>{{time}} - {{size}}</small>
                     </a>
                 </p>
             </td>

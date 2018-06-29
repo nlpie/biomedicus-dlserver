@@ -15,7 +15,7 @@ license_code = os.environ['NLMLICENSE']
 
 app = Bottle()
 
-downloads = shelve.open(os.path.join(home, 'downloads.txt'), writeback=True)
+downloads = shelve.open(os.path.join(home, 'downloads.pkl'), writeback=True)
 
 
 def system_downloads():
@@ -44,11 +44,7 @@ def build_files_list(directory):
 
 def file_dict(directory, item):
     path = os.path.join(directory, item)
-    return {
-        'file': item,
-        'byte_string': sizeof_fmt(os.path.getsize(path)),
-        'ctime': date.fromtimestamp(os.path.getmtime(path)).strftime('%d %B %Y')
-    }
+    return item, sizeof_fmt(os.path.getsize(path)), date.fromtimestamp(os.path.getmtime(path)).strftime('%d %B %Y')
 
 
 @app.get('/verify-umls/<filename>')
@@ -79,6 +75,9 @@ def serve_open(filename):
 
 @app.get('/')
 def downloads():
-    return template('downloads',
-                    {'open_data': open_data_downloads(), 'umls': umls_downloads(),
-                     'system': system_downloads()})
+    data = {
+        'open_data': open_data_downloads(),
+        'umls': umls_downloads(),
+        'system': system_downloads()
+    }
+    return template('downloads', data)
