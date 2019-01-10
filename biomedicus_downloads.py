@@ -1,21 +1,21 @@
+import json
 import shelve
-import xml.etree.ElementTree
 
 import os
 from datetime import date
 
 import requests
-from bottle import Bottle, template, static_file, request
+from bottle import template, static_file, request, post, get, run
+from lxml import html
 
 home = os.path.dirname(__file__)
 open_downloads_dir = os.path.join(home, 'downloads', 'open')
 umls_downloads_dir = os.path.join(home, 'downloads', 'umls')
 
-license_code = os.environ['NLMLICENSE']
-
-app = Bottle()
-
 downloads = shelve.open(os.path.join(home, 'downloads.pkl'), writeback=True)
+
+h = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain",
+     "User-Agent": "python"}
 
 
 def system_downloads():
@@ -44,36 +44,42 @@ def build_files_list(directory):
 
 def file_dict(directory, item):
     path = os.path.join(directory, item)
-    return item, sizeof_fmt(os.path.getsize(path)), date.fromtimestamp(os.path.getmtime(path)).strftime('%d %B %Y')
+    return item, sizeof_fmt(os.path.getsize(path)), date.fromtimestamp(
+        os.path.getmtime(path)).strftime('%d %B %Y')
 
 
-@app.get('/verify-umls/<filename>')
+@get('/verify-umls/<filename>')
 def verify_umls(filename):
     return template('verify-umls', {filename: filename})
 
 
-@app.post('/verify-umls/<filename>')
+@post('/verify-umls/<filename>')
 def serve_umls(filename):
     username = request.forms.get('umlsuser')
     password = request.forms.get('umlspw')
-    params = {'licenseCode': license_code, 'user': username, 'password': password}
-    r = requests.post('https://uts-ws.nlm.nih.gov/restful/isValidUMLSUser', params=params)
-    element = xml.etree.ElementTree.fromstring(r.text)
-    result_text = element.text
-    if "true" in result_text:
-        return static_file(filename, umls_downloads_dir)
-    else:
-        return template('reject-umls')
+    params = {'username': username, 'password': password}
+    r = requests.post('https://utslogin.nlm.nih.gov/cas/v1/tickets/', data=params, headers=h)
+    try:
+        json.loads(r.text)
+    except ValueError:
+        try:
+            doc = html.fromstring(r.text)
+            tgt = doc.xpath('//form/@action')[0]
+            if tgt is not None:
+                return static_file(filename, umls_downloads_dir, download=True)
+        except:
+            return template('reject-umls')
+    return template('reject-umls')
 
 
-@app.get('/open/<filename:path>')
+@get('/open/<filename:path>')
 def serve_open(filename):
     count = downloads.get(filename, 0)
     downloads[filename] = count + 1
-    return static_file(filename, open_downloads_dir)
+    return static_file(filename, open_downloads_dir, download=True)
 
 
-@app.get('/')
+@get('/')
 def downloads():
     data = {
         'open_data': open_data_downloads(),
@@ -81,3 +87,7 @@ def downloads():
         'system': system_downloads()
     }
     return template('downloads', data)
+
+
+if __name__ == '__main__':
+    run(host='localhost', port=8080)
