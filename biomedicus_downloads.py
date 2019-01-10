@@ -9,25 +9,23 @@ from bottle import template, static_file, request, post, get, run
 from lxml import html
 
 home = os.path.dirname(__file__)
-open_downloads_dir = os.path.join(home, 'downloads', 'open')
 umls_downloads_dir = os.path.join(home, 'downloads', 'umls')
+open_downloads_dir = os.path.join(home, 'downloads', 'open')
 
-downloads = shelve.open(os.path.join(home, 'downloads.pkl'), writeback=True)
+download_counts = shelve.open(os.path.join(home, 'downloads.pkl'), writeback=True)
 
-h = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain",
+h = {"Content-type": "application/x-www-form-urlencoded",
+     "Accept": "text/plain",
      "User-Agent": "python"}
 
 
-def system_downloads():
-    return build_files_list(os.path.join(open_downloads_dir, 'system'))
+def downloads_sections():
+    with open(os.path.join(home, 'downloads.json'), 'r') as f:
+        sections = json.load(f)
+        for section in sections:
+            section['umls_files'] = [file_dict(umls_downloads_dir, item) for item in section['umls_files']]
 
-
-def open_data_downloads():
-    return build_files_list(os.path.join(open_downloads_dir, 'data'))
-
-
-def umls_downloads():
-    return build_files_list(umls_downloads_dir)
+    return sections
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -38,14 +36,11 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def build_files_list(directory):
-    return [file_dict(directory, item) for item in sorted(os.listdir(directory), reverse=True)]
-
-
 def file_dict(directory, item):
     path = os.path.join(directory, item)
-    return item, sizeof_fmt(os.path.getsize(path)), date.fromtimestamp(
-        os.path.getmtime(path)).strftime('%d %B %Y')
+    size_str = sizeof_fmt(os.path.getsize(path))
+    date_str = date.fromtimestamp(os.path.getmtime(path)).strftime('%d %B %Y')
+    return item, size_str, date_str
 
 
 @get('/verify-umls/<filename>')
@@ -74,19 +69,16 @@ def serve_umls(filename):
 
 @get('/open/<filename:path>')
 def serve_open(filename):
-    count = downloads.get(filename, 0)
-    downloads[filename] = count + 1
+    count = download_counts.get(filename, 0)
+    download_counts[filename] = count + 1
     return static_file(filename, open_downloads_dir, download=True)
 
 
 @get('/')
 def downloads():
-    data = {
-        'open_data': open_data_downloads(),
-        'umls': umls_downloads(),
-        'system': system_downloads()
-    }
-    return template('downloads', data)
+    return template('downloads', {
+        'sections': downloads_sections()
+    })
 
 
 if __name__ == '__main__':

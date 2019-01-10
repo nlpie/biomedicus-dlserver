@@ -1,0 +1,15 @@
+[
+  {
+    "name": "BioMedICUS Downloads",
+    "description": "biomedicus-description.tpl",
+    "umls_files": [
+    ]
+  },
+  {
+    "name": "NLP-Adapt Downloads",
+    "description": null,
+    "umls_files": [
+
+    ]
+  }
+]
