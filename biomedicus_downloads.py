@@ -1,12 +1,14 @@
 import json
-import shelve
-
 import os
+import shelve
 from datetime import date
 
+import bottle
 import requests
 from bottle import template, static_file, request, post, get, run
 from lxml import html
+
+app = bottle.default_app()
 
 home = os.path.dirname(__file__)
 umls_downloads_dir = os.path.join(home, 'downloads', 'umls')
@@ -23,7 +25,8 @@ def downloads_sections():
     with open(os.path.join(home, 'downloads.json'), 'r') as f:
         sections = json.load(f)
         for section in sections:
-            section['umls_files'] = [file_dict(umls_downloads_dir, item) for item in section['umls_files']]
+            section['umls_files'] = [file_dict(umls_downloads_dir, item)
+                                     for item in section['umls_files']]
 
     return sections
 

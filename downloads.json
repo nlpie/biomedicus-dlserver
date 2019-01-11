@@ -3,6 +3,7 @@
     "name": "BioMedICUS Downloads",
     "description": "biomedicus-description.tpl",
     "umls_files": [
+      "test.txt"
     ]
   },
   {
