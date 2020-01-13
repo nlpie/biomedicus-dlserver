@@ -5,7 +5,7 @@ from datetime import date
 
 import bottle
 import requests
-from bottle import template, static_file, request, post, get, run
+from bottle import template, static_file, request, post, get, run, response
 from lxml import html
 
 app = bottle.default_app()
@@ -21,14 +21,18 @@ h = {"Content-type": "application/x-www-form-urlencoded",
      "User-Agent": "python"}
 
 
-def downloads_sections():
-    with open(os.path.join(home, 'downloads.json'), 'r') as f:
-        sections = json.load(f)
-        for section in sections:
-            section['umls_files'] = [file_dict(umls_downloads_dir, item)
-                                     for item in section['umls_files']]
+def enable_cors(fn):
+    def _enable_cors(*args, **kwargs):
+        # set CORS headers
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
 
-    return sections
+        if bottle.request.method != 'OPTIONS':
+            # actual request; reply with the actual response
+            return fn(*args, **kwargs)
+
+    return _enable_cors
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -39,11 +43,18 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def file_dict(directory, item):
+def file_info(directory, item):
     path = os.path.join(directory, item)
     size_str = sizeof_fmt(os.path.getsize(path))
     date_str = date.fromtimestamp(os.path.getmtime(path)).strftime('%d %B %Y')
-    return item, size_str, date_str
+    return size_str, date_str
+
+
+@get('/umls-file-info/<filename>')
+@enable_cors
+def umls_file_info(filename):
+    size, date = file_info(umls_downloads_dir, filename)
+    return json.dumps({'size': size, 'date': date})
 
 
 @get('/verify-umls/<filename>')
@@ -64,10 +75,19 @@ def serve_umls(filename):
             doc = html.fromstring(r.text)
             tgt = doc.xpath('//form/@action')[0]
             if tgt is not None:
+                count = download_counts.get(filename, 0)
+                download_counts[filename] = count + 1
                 return static_file(filename, umls_downloads_dir, download=True)
         except:
             return template('reject-umls')
     return template('reject-umls')
+
+
+@get('open-file-info/<filename>')
+@enable_cors
+def open_file_info(filename):
+    size, date = file_info(open_downloads_dir, filename)
+    return json.dumps({'size': size, 'date': date})
 
 
 @get('/open/<filename:path>')
@@ -75,13 +95,6 @@ def serve_open(filename):
     count = download_counts.get(filename, 0)
     download_counts[filename] = count + 1
     return static_file(filename, open_downloads_dir, download=True)
-
-
-@get('/')
-def downloads():
-    return template('downloads', {
-        'sections': downloads_sections()
-    })
 
 
 if __name__ == '__main__':
