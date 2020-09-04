@@ -2,3 +2,4 @@ downloads
 .idea
 *.pyc
 downloads.pkl
+Pipfile
