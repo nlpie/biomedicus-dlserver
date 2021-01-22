@@ -39,6 +39,7 @@ def file_info(directory, item):
 @app.route('/umls-file-info/<filename>', methods=['GET'])
 @cross_origin()
 def umls_file_info(filename):
+    filename = str(filename)
     size, date = file_info(umls_downloads_dir, filename)
     return json.dumps({'size': size, 'date': date})
 
@@ -51,10 +52,9 @@ def verify_umls(_):
 @app.route('/verify-umls/<filename>', methods=['POST'])
 def serve_umls(filename):
     filename = str(filename)
-    username = request.form.get('umlsuser')
-    password = request.form.get('umlspw')
-    params = {'username': username, 'password': password}
-    r = requests.post('https://utslogin.nlm.nih.gov/cas/v1/tickets/', data=params,
+    apikey = request.form.get('apikey')
+    params = {'apikey': apikey}
+    r = requests.post('https://utslogin.nlm.nih.gov/cas/v1/api-key', data=params,
                       headers=UTS_HEADER)
     if r.status_code == 201:
         count = download_counts.get(filename, 0)

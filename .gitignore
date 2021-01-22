@@ -3,3 +3,4 @@ downloads
 *.pyc
 downloads.pkl
 Pipfile
+venv/
